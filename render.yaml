@@ -1,8 +1,17 @@
+databases:
+  - name: semausu-postgres
+    databaseName: semausu
+    user: semausu
+    plan: free
+    region: frankfurt
+    ipAllowList: []
+
 services:
   - type: web
     name: semausu
     runtime: node
     plan: free
+    region: frankfurt
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health
@@ -11,8 +20,10 @@ services:
         value: production
       - key: APP_URL
         value: https://semausu.onrender.com
-      - key: DATABASE_PATH
-        value: /tmp/supermarket.db
+      - key: DATABASE_URL
+        fromDatabase:
+          name: semausu-postgres
+          property: connectionString
       - key: SESSION_SECRET
         generateValue: true
       - key: STAFF_PORTAL_PATH
@@ -20,20 +31,20 @@ services:
       - key: PLATFORM_PORTAL_PATH
         sync: false
       - key: PLATFORM_OWNER_NAME
-        sync: false
+        value: Solomon Itumeleng
       - key: PLATFORM_OWNER_EMAIL
-        sync: false
+        value: solomonitumeleng143@gmail.com
       - key: PLATFORM_OWNER_PASSWORD
         sync: false
       - key: SMTP_HOST
-        sync: false
+        value: smtp.gmail.com
       - key: SMTP_PORT
-        value: "587"
+        value: "465"
       - key: SMTP_SECURE
-        value: "false"
+        value: "true"
       - key: SMTP_USER
-        sync: false
+        value: solomonitumeleng143@gmail.com
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        sync: false
+        value: Semausu <solomonitumeleng143@gmail.com>

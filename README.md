@@ -30,4 +30,5 @@ No supermarkets or accounts are seeded. Set the platform-owner environment varia
 
 - Configure SMTP so verification and invitation emails can be delivered.
 - Keep `SESSION_SECRET`, both private portal paths and platform-owner credentials out of source control.
-- The free Render filesystem is temporary. Before onboarding real supermarkets, attach a persistent disk or migrate the database to managed PostgreSQL.
+- Semausu uses a dedicated PostgreSQL database. Never point `DATABASE_URL` at another application's database.
+- For Gmail SMTP, enable Google two-step verification and use a Google App Password as `SMTP_PASS`; never use the normal Gmail password.
