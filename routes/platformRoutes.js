@@ -1,0 +1,12 @@
+const express=require('express');
+const db=require('../config/db');
+const config=require('../config');
+const {requireUser,roles}=require('../middleware/auth');
+const {id,randomToken,tokenHash}=require('../utils/security');
+const {send}=require('../utils/email');
+const router=express.Router();router.use(requireUser);router.use(roles('platform_owner','platform_staff'));
+router.get('/',async(req,res)=>{const [stores,users,tickets]=await Promise.all([db.all('SELECT * FROM supermarkets ORDER BY created_at DESC'),db.all('SELECT id,name,email,role,status,supermarket_id,last_login_at FROM users ORDER BY created_at DESC'),db.all("SELECT t.*,s.name supermarket_name,u.name user_name FROM support_tickets t LEFT JOIN supermarkets s ON s.id=t.supermarket_id LEFT JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC")]);res.render('platform',{title:'Platform control',stores,users,tickets})});
+router.post('/stores/:id/status',roles('platform_owner'),async(req,res)=>{await db.run('UPDATE supermarkets SET status=? WHERE id=?',[['active','suspended'].includes(req.body.status)?req.body.status:'suspended',req.params.id]);res.redirect('/platform')});
+router.post('/invite',roles('platform_owner'),async(req,res)=>{const email=String(req.body.email||'').toLowerCase(),raw=randomToken();await db.run('INSERT INTO invitations(id,supermarket_id,invited_by,email,role,token_hash,expires_at) VALUES(?,NULL,?,?,?,?,?)',[id(),req.user.id,email,'platform_staff',tokenHash(raw),new Date(Date.now()+48*3600000).toISOString()]);await send({to:email,subject:'Join the Semausu platform team',text:`Accept your invitation: ${config.appUrl}/join/${raw}`});res.redirect('/platform')});
+router.post('/tickets/:id/status',async(req,res)=>{await db.run('UPDATE support_tickets SET status=? WHERE id=?',[['open','in_progress','resolved'].includes(req.body.status)?req.body.status:'open',req.params.id]);res.redirect('/platform')});
+module.exports=router;

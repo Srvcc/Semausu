@@ -1,28 +1,24 @@
 require('dotenv').config();
-const path = require('path');
-const express = require('express');
-const helmet = require('helmet');
-const db = require('./config/db');
-const customerRoutes = require('./routes/customerRoutes');
-const supermarketRoutes = require('./routes/supermarketRoutes');
-
-const app = express();
-const port = Number(process.env.PORT || 3000);
-app.disable('x-powered-by');
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json({ limit: '2mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-app.use('/', customerRoutes);
-app.use('/supermarket', supermarketRoutes);
-app.use((_req, res) => res.status(404).render('error', { title: 'Not found', message: 'That page does not exist.' }));
-app.use((error, _req, res, _next) => { console.error(error); res.status(500).render('error', { title: 'Something went wrong', message: 'Please try again.' }); });
-
-db.initialize().then(() => app.listen(port, () => console.log(`Masolies running at http://localhost:${port}`))).catch(error => {
-  console.error('Database initialization failed', error);
-  process.exit(1);
-});
-module.exports = app;
+const path=require('path');
+const express=require('express');
+const helmet=require('helmet');
+const session=require('express-session');
+const SQLiteStore=require('connect-sqlite3')(session);
+const bcrypt=require('bcryptjs');
+const config=require('./config');
+const db=require('./config/db');
+const {loadUser}=require('./middleware/auth');
+const {csrf}=require('./middleware/security');
+const app=express();
+if(config.production&&!config.sessionSecret)throw new Error('SESSION_SECRET is required in production');
+if(config.production&&(!process.env.STAFF_PORTAL_PATH||!process.env.PLATFORM_PORTAL_PATH))throw new Error('Private portal paths are required in production');
+app.set('trust proxy',1);app.disable('x-powered-by');app.set('view engine','ejs');app.set('views',path.join(__dirname,'views'));
+app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],styleSrc:["'self'"],scriptSrc:["'self'"],imgSrc:["'self'",'data:']}}}));app.use(express.urlencoded({extended:false,limit:'2mb'}));app.use(express.json({limit:'2mb'}));
+app.use(session({name:'semausu.sid',secret:config.sessionSecret,resave:false,saveUninitialized:false,rolling:true,store:new SQLiteStore({db:'sessions.db',dir:path.dirname(config.databasePath)}),cookie:{httpOnly:true,sameSite:'strict',secure:config.production,maxAge:8*60*60*1000}}));
+app.use(loadUser);app.use(csrf);app.use(express.static(path.join(__dirname,'public')));app.locals.staffPortalPath=config.staffPortalPath;app.locals.platformPortalPath=config.platformPortalPath;
+app.get('/health',(_req,res)=>res.json({status:'ok'}));
+app.use('/',require('./routes/authRoutes'));app.use('/',require('./routes/customerRoutes'));app.use('/workspace',require('./routes/workspaceRoutes'));app.use('/platform',require('./routes/platformRoutes'));
+app.use((_req,res)=>res.status(404).render('error',{title:'Not found',message:'That page does not exist.'}));app.use((error,req,res,_next)=>{console.error(error);res.status(500).render('error',{title:'Something went wrong',message:config.production?'Please try again.':error.message})});
+async function bootstrapPlatformOwner(){const email=String(process.env.PLATFORM_OWNER_EMAIL||'').toLowerCase(),password=process.env.PLATFORM_OWNER_PASSWORD,name=process.env.PLATFORM_OWNER_NAME||'Platform Owner';if(!email||!password)return;if(!await db.get('SELECT id FROM users WHERE email=?',[email])){const {id}=require('./utils/security');await db.run("INSERT INTO users(id,supermarket_id,name,email,password_hash,role,status,email_verified) VALUES(?,NULL,?,?,?,'platform_owner','active',1)",[id(),name,email,await bcrypt.hash(password,12)]);console.log('Platform owner created')}}
+db.initialize().then(bootstrapPlatformOwner).then(()=>app.listen(config.port,()=>console.log(`Semausu running at ${config.appUrl}`))).catch(error=>{console.error(error);process.exit(1)});
+module.exports=app;

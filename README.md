@@ -1,8 +1,22 @@
-# Masolies Supermarket Navigation
+# Semausu
 
-Indoor supermarket navigation arranged in the familiar Itumeleng Deliveries structure: `server.js`, EJS views, route modules, models, utilities, public assets and SQLite.
+Multi-tenant supermarket navigation and operations platform.
 
-## Run locally
+## Access model
+
+- Customers browse active supermarkets and build indoor routes without accounts.
+- Supermarket owners register publicly and verify their email.
+- Owners invite multiple managers or staff. Managers may invite staff.
+- Platform employees join only through invitations from the platform owner.
+- Team and platform login URLs are configured privately and are never linked publicly.
+
+Hidden URLs reduce casual discovery but are not the security boundary. Semausu also uses password hashing, verified email, invite-only employee onboarding, role authorization, rate limits, CSRF protection, secure cookies, account suspension and audit logs.
+
+## Supermarket workflow
+
+Owners and managers configure store information, map dimensions, aisles, departments, services and entrances. The catalogue stores SKU, barcode, category, price, stock, aisle, bay, shelf and map coordinates. Customers only see active, in-stock products.
+
+## Local setup
 
 ```powershell
 Copy-Item .env.example .env
@@ -10,4 +24,10 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000. The database, sample supermarket, aisles and products are created automatically.
+No supermarkets or accounts are seeded. Set the platform-owner environment variables before the first start to bootstrap the first platform owner. In development, verification emails print to the terminal when SMTP is not configured.
+
+## Production requirements
+
+- Configure SMTP so verification and invitation emails can be delivered.
+- Keep `SESSION_SECRET`, both private portal paths and platform-owner credentials out of source control.
+- The free Render filesystem is temporary. Before onboarding real supermarkets, attach a persistent disk or migrate the database to managed PostgreSQL.

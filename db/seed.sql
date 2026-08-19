@@ -1,6 +1,0 @@
-INSERT INTO supermarkets(name,slug,address) VALUES('Masolies Market','masolies-market','Johannesburg');
-INSERT INTO aisles(supermarket_id,code,name,kind,x,y,width,height) VALUES
-(1,'A1','Fresh Produce','department',90,100,180,420),(1,'A2','Bakery & Breakfast','aisle',330,100,120,420),(1,'A3','Pantry','aisle',520,100,120,420),(1,'A4','Household','aisle',710,100,120,420),(1,'A5','Health & Beauty','aisle',900,100,120,420),(1,'CHECK','Checkout','service',290,610,650,80);
-INSERT INTO entrances(supermarket_id,name,x,y) VALUES(1,'Main entrance',135,700),(1,'Parking entrance',1080,690);
-INSERT INTO products(supermarket_id,aisle_id,name,category,sku,price,stock,bay,shelf,x,y) VALUES
-(1,1,'Bananas','Fresh Produce','FRU-001',24.99,80,1,'Produce stand',180,180),(1,1,'Tomatoes','Fresh Produce','VEG-002',29.99,45,2,'Produce stand',180,340),(1,2,'Brown Bread','Bakery','BAK-010',18.99,30,1,'Eye level',390,180),(1,2,'Corn Flakes','Breakfast','BRK-003',54.99,22,3,'Top shelf',390,390),(1,3,'Long-life Milk 1L','Dairy','DAI-101',17.99,60,2,'Eye level',580,220),(1,3,'Rice 2kg','Pantry','PAN-220',46.99,35,4,'Lower shelf',580,430),(1,4,'Dishwashing Liquid','Household','HOU-410',32.99,18,2,'Eye level',770,260),(1,5,'Shampoo','Health & Beauty','HAB-510',64.99,15,3,'Eye level',960,360);

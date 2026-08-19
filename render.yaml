@@ -9,5 +9,31 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: APP_URL
+        value: https://semausu.onrender.com
       - key: DATABASE_PATH
         value: /tmp/supermarket.db
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: STAFF_PORTAL_PATH
+        sync: false
+      - key: PLATFORM_PORTAL_PATH
+        sync: false
+      - key: PLATFORM_OWNER_NAME
+        sync: false
+      - key: PLATFORM_OWNER_EMAIL
+        sync: false
+      - key: PLATFORM_OWNER_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false

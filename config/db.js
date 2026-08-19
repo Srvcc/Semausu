@@ -10,7 +10,5 @@ function all(sql, params = []) { return new Promise((resolve, reject) => databas
 function exec(sql) { return new Promise((resolve, reject) => database.exec(sql, error => error ? reject(error) : resolve())); }
 async function initialize() {
   await exec(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf8'));
-  const row = await get('SELECT COUNT(*) AS count FROM supermarkets');
-  if (!row.count) await exec(fs.readFileSync(path.join(__dirname, '..', 'db', 'seed.sql'), 'utf8'));
 }
 module.exports = { run, get, all, exec, initialize };
