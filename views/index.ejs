@@ -1,1 +1,23 @@
-<%- include('partials/head') %><main class="home"><section class="hero"><p class="eyebrow">ANONYMOUS IN-STORE NAVIGATION</p><h1>Find everything.<br><em>Without searching.</em></h1><p>Choose a supermarket, build your shopping list, and follow the shortest route to every aisle, bay and shelf. Customers never need an account.</p><a class="button" href="#stores">Choose a supermarket</a> <a class="button secondary" href="/list-your-supermarket">List your supermarket</a></section><section id="stores"><h2>Available supermarkets</h2><div class="cards"><% if(!supermarkets.length){ %><article class="card"><h3>No supermarkets are live yet</h3><p>Verified supermarkets will appear here.</p></article><% } %><% supermarkets.forEach(supermarket=>{ %><a class="card" href="/supermarkets/<%= supermarket.slug %>"><span>OPEN STORE MAP</span><h3><%= supermarket.name %></h3><p><%= supermarket.address %></p></a><% }) %></div></section></main><%- include('partials/footer') %>
+<%- include('partials/head') %>
+<main class="home-clean">
+  <section class="home-hero">
+    <div class="home-copy">
+      <p class="eyebrow">IN-STORE NAVIGATION, MADE SIMPLE</p>
+      <h1>Find every item.<br><em>Walk the smartest route.</em></h1>
+      <p class="home-lead">Choose a supermarket, select what you need, and get a clear route to the correct aisle, bay and shelf. No customer account required.</p>
+      <div class="home-actions"><a class="button" href="#stores">Find a supermarket</a><a class="quiet-link" href="/list-your-supermarket">Register a supermarket →</a></div>
+    </div>
+    <aside class="route-preview" aria-label="How Semausu works">
+      <span class="preview-label">YOUR SHOPPING ROUTE</span>
+      <ol><li><b>Entrance</b><small>Start where you walk in</small></li><li><b>Fresh produce</b><small>Aisle A1 · Bay 2</small></li><li><b>Household</b><small>Aisle C4 · Eye level</small></li><li><b>Checkout</b><small>Route complete</small></li></ol>
+    </aside>
+  </section>
+  <section class="store-section" id="stores">
+    <div class="section-title"><div><p class="eyebrow">LIVE STORES</p><h2>Choose your supermarket</h2></div><p><%= supermarkets.length %> available</p></div>
+    <div class="store-grid">
+      <% if(!supermarkets.length){ %><article class="empty-store"><h3>No supermarkets are live yet</h3><p>Verified supermarkets will appear here.</p></article><% } %>
+      <% supermarkets.forEach(supermarket=>{ %><a class="store-tile" href="/supermarkets/<%= supermarket.slug %>"><span>OPEN NAVIGATION</span><h3><%= supermarket.name %></h3><p><%= supermarket.address %></p><b aria-hidden="true">→</b></a><% }) %>
+    </div>
+  </section>
+</main>
+<%- include('partials/footer') %>
