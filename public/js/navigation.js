@@ -1,33 +1,15 @@
 document.addEventListener('DOMContentLoaded',()=>{
   const root=document.querySelector('[data-navigation]');
   if(!root)return;
-  const button=document.querySelector('#buildRoute');
-  button.addEventListener('click',async()=>{
-    const productIds=[...document.querySelectorAll('.menu-item input:checked')].map(input=>Number(input.value));
-    if(!productIds.length)return alert('Select at least one product.');
-    const original=button.textContent;
-    button.disabled=true;
-    button.classList.add('is-loading');
-    button.textContent='Building route…';
-    try{
-      const response=await fetch(`/api/supermarkets/${root.dataset.slug}/route`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entranceId:Number(document.querySelector('#entrance').value),productIds})});
-      if(!response.ok)throw new Error('Route request failed');
-      const route=await response.json();
-      document.querySelector('#routeLine').setAttribute('points',[route.start,...route.stops].map(point=>`${point.x},${point.y}`).join(' '));
-      document.querySelector('#routeStops').innerHTML=route.stops.map(stop=>`<li><b>${escapeHtml(stop.name)}</b><small>${escapeHtml(`${stop.aisle_code||''}, bay ${stop.bay}, ${stop.shelf}`)}</small></li>`).join('');
-      button.textContent='Route ready ✓';
-      button.classList.remove('is-loading');
-      await new Promise(resolve=>setTimeout(resolve,1200));
-    }catch(error){
-      button.textContent='Try again';
-      button.classList.remove('is-loading');
-      alert('We could not build the route. Please try again.');
-      await new Promise(resolve=>setTimeout(resolve,1200));
-    }finally{
-      button.disabled=false;
-      button.classList.remove('is-loading');
-      button.textContent=original;
-    }
-  });
+  const products=JSON.parse(document.querySelector('#productData')?.textContent||'[]');
+  const list=document.querySelector('#shoppingList'),matchButton=document.querySelector('#matchList'),results=document.querySelector('#matchResults'),controls=document.querySelector('#routeControls'),routeButton=document.querySelector('#buildRoute'),svg=document.querySelector('#storeMap');
+  const clean=value=>String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const distance=(a,b)=>{const row=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let previous=row[0];row[0]=i;for(let j=1;j<=b.length;j++){const old=row[j];row[j]=Math.min(row[j]+1,row[j-1]+1,previous+(a[i-1]===b[j-1]?0:1));previous=old}}return row[b.length]};
+  const score=(query,product)=>{const name=clean(product.name),category=clean(product.category);if(name===query)return 0;if(name.includes(query))return 1+(name.length-query.length)/100;if(query.includes(name))return 1.5;const queryTokens=query.split(' '),nameTokens=name.split(' '),overlap=queryTokens.filter(token=>nameTokens.some(word=>word.includes(token)||token.includes(word))).length;if(overlap)return 2-overlap/queryTokens.length;const edit=distance(query,name)/Math.max(query.length,name.length,1);const categoryBoost=category.includes(query)?.25:0;return 3+edit-categoryBoost};
+  const matches=query=>products.map(product=>({product,score:score(clean(query),product)})).sort((a,b)=>a.score-b.score).slice(0,8);
+  const location=product=>[product.aisle_code,product.aisle_side,product.section_name,`bay ${product.bay}`,product.shelf].filter(Boolean).join(' · ');
+  matchButton.addEventListener('click',()=>{const queries=[...new Set(list.value.split(/\r?\n|,/).map(value=>value.trim()).filter(Boolean))];if(!queries.length){list.focus();return}results.innerHTML=queries.map((query,index)=>{const found=matches(query);return `<section class="match-group"><div class="match-title"><span>${index+1}</span><div><h3>${escapeHtml(query)}</h3><p>${found.length?`${found.length} closest products — choose what you meant`:'No products are currently available'}</p></div></div><div class="match-options">${found.map(({product,score})=>`<label class="product-choice"><input type="checkbox" value="${escapeHtml(String(product.id))}"><span class="product-placeholder">${escapeHtml(product.name.slice(0,2).toUpperCase())}</span><span><b>${escapeHtml(product.name)}</b><small>${escapeHtml(product.category)} · ${escapeHtml(location(product))}</small></span><strong>R${Number(product.price).toFixed(2)}${score>3.45?'<small>Closest suggestion</small>':''}</strong></label>`).join('')}</div></section>`}).join('');controls.hidden=!products.length;controls.scrollIntoView({behavior:'smooth',block:'nearest'})});
+  routeButton.addEventListener('click',async()=>{const productIds=[...new Set([...results.querySelectorAll('input:checked')].map(input=>input.value))];if(!productIds.length)return alert('Choose at least one product from the matches.');const original=routeButton.textContent;routeButton.disabled=true;routeButton.classList.add('is-loading');routeButton.textContent='Building route…';try{const response=await fetch(`/api/supermarkets/${root.dataset.slug}/route`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({_csrf:root.dataset.csrf,entranceId:document.querySelector('#entrance').value,productIds})});const route=await response.json();if(!response.ok)throw new Error(route.error||'Route failed');document.querySelector('#routeLine').setAttribute('points',[route.start,...route.stops].map(point=>`${point.x},${point.y}`).join(' '));document.querySelector('#routeStops').innerHTML=route.stops.map((stop,index)=>`<li><span>${index+1}</span><div><b>${escapeHtml(stop.name)}</b><small>${escapeHtml(location(stop))}</small></div></li>`).join('');routeButton.classList.remove('is-loading');routeButton.textContent='Route ready ✓';document.querySelector('#routeStops').scrollIntoView({behavior:'smooth',block:'nearest'});setTimeout(()=>{routeButton.textContent=original;routeButton.disabled=false},1400)}catch(error){routeButton.classList.remove('is-loading');routeButton.textContent='Try again';routeButton.disabled=false;alert(error.message)}});
+  const initial={width:svg.viewBox.baseVal.width,height:svg.viewBox.baseVal.height};let zoom=1;const setZoom=value=>{zoom=value;svg.setAttribute('viewBox',`0 0 ${initial.width/zoom} ${initial.height/zoom}`);document.querySelector('[data-customer-zoom-reset]').textContent=`${Math.round(zoom*100)}%`};document.querySelector('[data-customer-zoom-in]').addEventListener('click',()=>setZoom(Math.min(2.5,zoom+.2)));document.querySelector('[data-customer-zoom-out]').addEventListener('click',()=>setZoom(Math.max(.5,zoom-.2)));document.querySelector('[data-customer-zoom-reset]').addEventListener('click',()=>setZoom(1));
 });
 function escapeHtml(value){const node=document.createElement('span');node.textContent=value;return node.innerHTML;}

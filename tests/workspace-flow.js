@@ -1,0 +1,21 @@
+(async()=>{
+  const base=process.env.TEST_BASE_URL||'http://127.0.0.1:3193';
+  const form=async(path,cookie,values)=>fetch(base+path,{method:'POST',redirect:'manual',headers:{cookie,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams(values)});
+  let response=await fetch(base+'/list-your-supermarket'),html=await response.text();
+  const cookie=response.headers.get('set-cookie').split(';')[0],csrf=html.match(/name="_csrf" value="([^"]+)/)[1],email=`floor-${Date.now()}@example.test`;
+  response=await form('/list-your-supermarket',cookie,{_csrf:csrf,name:'Floor Owner',email,password:'StrongPassword123',supermarketName:'Floor Market',address:'Test Road',phone:''});html=await response.text();
+  const code=html.match(/Development code: <b>(\d{6})<\/b>/)[1],verifyCsrf=html.match(/name="_csrf" value="([^"]+)/)[1];
+  response=await form('/verify',cookie,{_csrf:verifyCsrf,email,code});if(response.status!==302)throw new Error('Verification failed');
+  response=await fetch(base+'/workspace',{headers:{cookie}});html=await response.text();if(response.status!==200||!html.includes('VISUAL EDITOR'))throw new Error(`Workspace did not render (${response.status})`);
+  const workspaceCsrf=html.match(/name="_csrf" value="([^"]+)/)[1],slug=html.match(/href="\/supermarkets\/([^"]+)"/)[1];
+  await form('/workspace/aisles',cookie,{_csrf:workspaceCsrf,code:'A1',name:'Dairy',kind:'aisle',width:'180',height:'360'});
+  response=await fetch(base+'/workspace#layout',{headers:{cookie}});html=await response.text();const aisleId=html.match(/data-aisle-id="([^"]+)"/)[1],csrf2=html.match(/name="_csrf" value="([^"]+)/)[1];
+  await form(`/workspace/aisles/${aisleId}/sections`,cookie,{_csrf:csrf2,name:'Milk section',side:'front',startPercent:'0',endPercent:'50'});
+  response=await fetch(base+'/workspace',{headers:{cookie}});html=await response.text();const sectionId=html.match(/<option value="([^"]+)" data-aisle="[^"]+" data-side="front">Milk section<\/option>/)[1],csrf3=html.match(/name="_csrf" value="([^"]+)/)[1];
+  await form('/workspace/entrances',cookie,{_csrf:csrf3,name:'Main entrance',x:'40',y:'700'});
+  await form('/workspace/products',cookie,{_csrf:csrf3,name:'Full Cream Milk 2L',category:'Dairy',sku:'MILK2',barcode:'',price:'34.99',stock:'20',aisleId,sectionId,aisleSide:'front',bay:'2',shelf:'Eye level'});
+  response=await fetch(base+`/supermarkets/${slug}`,{headers:{cookie}});html=await response.text();if(response.status!==200||!html.includes('Full Cream Milk 2L')||!html.includes('Paste your shopping list'))throw new Error('Customer matcher did not render');
+  const customerCsrf=html.match(/data-csrf="([^"]+)"/)[1],entranceId=html.match(/<option value="([^"]+)">Main entrance<\/option>/)[1],productId=JSON.parse(html.match(/<script type="application\/json" id="productData">([\s\S]*?)<\/script>/)[1])[0].id;
+  response=await fetch(base+`/api/supermarkets/${slug}/route`,{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({_csrf:customerCsrf,entranceId,productIds:[productId]})});if(response.status!==200)throw new Error(`Customer route failed: ${response.status}`);
+  console.log('Floor editor, aisle subsection, product placement and customer route passed');
+})().catch(error=>{console.error(error);process.exit(1)});

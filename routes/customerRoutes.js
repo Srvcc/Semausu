@@ -2,8 +2,19 @@ const express=require('express');
 const db=require('../config/db');
 const {optimize}=require('../utils/routeOptimizer');
 const router=express.Router();
-async function storeMap(id){const [aisles,entrances,products]=await Promise.all([db.all('SELECT * FROM aisles WHERE supermarket_id=? ORDER BY sort_order,code',[id]),db.all('SELECT * FROM entrances WHERE supermarket_id=? ORDER BY sort_order',[id]),db.all('SELECT p.*,a.code aisle_code,a.name aisle_name FROM products p LEFT JOIN aisles a ON a.id=p.aisle_id WHERE p.supermarket_id=? AND p.available=1 AND p.stock>0 ORDER BY p.category,p.name',[id])]);return{aisles,entrances,products}}
+const number=value=>Number(value)||0;
+
+async function storeMap(id){
+  const [aisles,sections,entrances,rawProducts]=await Promise.all([
+    db.all('SELECT * FROM aisles WHERE supermarket_id=? ORDER BY sort_order,code',[id]),
+    db.all('SELECT * FROM aisle_sections WHERE supermarket_id=? ORDER BY aisle_id,side,sort_order,name',[id]),
+    db.all('SELECT * FROM entrances WHERE supermarket_id=? ORDER BY sort_order',[id]),
+    db.all('SELECT p.*,a.code aisle_code,a.name aisle_name,s.name section_name FROM products p LEFT JOIN aisles a ON a.id=p.aisle_id LEFT JOIN aisle_sections s ON s.id=p.section_id WHERE p.supermarket_id=? AND p.available=1 AND p.stock>0 ORDER BY p.category,p.name',[id])
+  ]);
+  return{aisles,sections,entrances,products:rawProducts.map(product=>({...product,price:number(product.price),stock:number(product.stock),x:number(product.x),y:number(product.y)}))};
+}
+
 router.get('/',async(_req,res)=>res.render('index',{title:'Semausu',supermarkets:await db.all("SELECT id,name,slug,address FROM supermarkets WHERE status='active' ORDER BY name")}));
 router.get('/supermarkets/:slug',async(req,res)=>{const supermarket=await db.get("SELECT * FROM supermarkets WHERE slug=? AND status='active'",[req.params.slug]);if(!supermarket)return res.status(404).render('error',{title:'Supermarket not found',message:'This supermarket is unavailable.'});res.render('customer-navigation',{title:supermarket.name,supermarket,map:await storeMap(supermarket.id)});});
-router.post('/api/supermarkets/:slug/route',async(req,res)=>{const supermarket=await db.get("SELECT * FROM supermarkets WHERE slug=? AND status='active'",[req.params.slug]);if(!supermarket)return res.status(404).json({error:'Supermarket not found'});const map=await storeMap(supermarket.id),ids=Array.isArray(req.body.productIds)?req.body.productIds.map(String):[],entrance=map.entrances.find(x=>x.id===String(req.body.entranceId))||map.entrances[0];if(!entrance)return res.status(400).json({error:'This store has not configured an entrance yet'});res.json({start:entrance,stops:optimize(entrance,map.products.filter(product=>ids.includes(product.id)))});});
+router.post('/api/supermarkets/:slug/route',async(req,res)=>{const supermarket=await db.get("SELECT * FROM supermarkets WHERE slug=? AND status='active'",[req.params.slug]);if(!supermarket)return res.status(404).json({error:'Supermarket not found'});const map=await storeMap(supermarket.id),ids=Array.isArray(req.body.productIds)?req.body.productIds.map(String):[],entrance=map.entrances.find(x=>x.id===String(req.body.entranceId))||map.entrances[0];if(!entrance)return res.status(400).json({error:'This store has not configured an entrance yet'});const selected=map.products.filter(product=>ids.includes(String(product.id)));if(!selected.length)return res.status(400).json({error:'Choose at least one matched product'});res.json({start:entrance,stops:optimize(entrance,selected)});});
 module.exports=router;
