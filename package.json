@@ -1,0 +1,19 @@
+{
+  "name": "masolies-supermarket-navigation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Indoor supermarket navigation using an Express, EJS and SQLite structure",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "sqlite3": "^5.1.7"
+  }
+}
