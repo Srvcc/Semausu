@@ -3,7 +3,7 @@ databases:
     databaseName: semausu
     user: semausu
     plan: free
-    region: frankfurt
+    region: oregon
     ipAllowList: []
 
 services:
@@ -11,7 +11,7 @@ services:
     name: semausu
     runtime: node
     plan: free
-    region: frankfurt
+    region: oregon
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health
