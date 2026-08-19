@@ -1,0 +1,9 @@
+.button{transition:transform .12s ease,background-color .18s ease,box-shadow .18s ease,opacity .18s ease}
+.button:hover{background:#d0352b;box-shadow:0 7px 18px rgba(179,38,30,.22);transform:translateY(-1px)}
+.button:active{background:#861b15;box-shadow:none;transform:translateY(1px) scale(.98)}
+.button:focus-visible,.link-button:focus-visible,.link-danger:focus-visible{outline:3px solid #efb7b2;outline-offset:3px}
+.button:disabled,.button.is-loading{background:#8f8176;cursor:wait;opacity:.85;transform:none;box-shadow:none}
+.button.is-loading::after{content:'';display:inline-block;width:13px;height:13px;margin-left:9px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;vertical-align:-2px;animation:button-spin .7s linear infinite}
+@keyframes button-spin{to{transform:rotate(360deg)}}
+.secondary:hover{background:#39312d}
+.resend-form{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
