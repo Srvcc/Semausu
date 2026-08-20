@@ -5,6 +5,7 @@ const config=require('../config');
 const {requireUser,roles}=require('../middleware/auth');
 const {id,randomToken,tokenHash}=require('../utils/security');
 const {send}=require('../utils/email');
+const {summarize}=require('../utils/analytics');
 const router=express.Router();
 router.use(requireUser);
 router.use(roles('owner','manager','staff'));
@@ -13,17 +14,18 @@ const sides=['front','back','left','right'];
 const number=value=>Number(value)||0;
 
 async function data(storeId){
-  const [store,rawProducts,aisles,sections,entrances,team,tickets]=await Promise.all([
+  const [store,rawProducts,aisles,sections,entrances,team,tickets,events]=await Promise.all([
     db.get('SELECT * FROM supermarkets WHERE id=?',[storeId]),
     db.all('SELECT p.*,a.code aisle_code FROM products p LEFT JOIN aisles a ON a.id=p.aisle_id WHERE p.supermarket_id=? ORDER BY p.name',[storeId]),
     db.all('SELECT * FROM aisles WHERE supermarket_id=? ORDER BY sort_order,code',[storeId]),
     db.all('SELECT * FROM aisle_sections WHERE supermarket_id=? ORDER BY aisle_id,side,sort_order,name',[storeId]),
     db.all('SELECT * FROM entrances WHERE supermarket_id=? ORDER BY sort_order',[storeId]),
     db.all("SELECT id,name,email,role,status,last_login_at FROM users WHERE supermarket_id=? ORDER BY role,name",[storeId]),
-    db.all('SELECT * FROM support_tickets WHERE supermarket_id=? ORDER BY created_at DESC',[storeId])
+    db.all('SELECT * FROM support_tickets WHERE supermarket_id=? ORDER BY created_at DESC',[storeId]),
+    db.all('SELECT event_type,query,match_count,item_count,session_id,created_at FROM shopping_events WHERE supermarket_id=? ORDER BY created_at',[storeId])
   ]);
   const products=rawProducts.map(product=>({...product,price:number(product.price),stock:number(product.stock),x:number(product.x),y:number(product.y)}));
-  return{store,products,aisles,sections,entrances,team,tickets};
+  return{store,products,aisles,sections,entrances,team,tickets,analytics:summarize(events)};
 }
 
 function placement(aisle,side,bay,section){
@@ -64,6 +66,8 @@ router.post('/aisles/:id/sections',roles('owner','manager'),async(req,res)=>{
   await db.run('INSERT INTO aisle_sections(id,aisle_id,supermarket_id,name,side,start_percent,end_percent) VALUES(?,?,?,?,?,?,?)',[id(),aisle.id,req.user.supermarket_id,b.name,b.side,b.startPercent,b.endPercent]);
   res.redirect('/workspace?notice='+encodeURIComponent(`${b.name} subsection added.`)+'#layout');
 });
+router.post('/aisles/:id/delete',roles('owner','manager'),async(req,res)=>{await db.run('DELETE FROM aisles WHERE id=? AND supermarket_id=?',[req.params.id,req.user.supermarket_id]);res.redirect('/workspace?notice='+encodeURIComponent('Aisle removed. Products from it are now unmapped.')+'#layout')});
+router.post('/sections/:id/delete',roles('owner','manager'),async(req,res)=>{await db.run('DELETE FROM aisle_sections WHERE id=? AND supermarket_id=?',[req.params.id,req.user.supermarket_id]);res.redirect('/workspace?notice='+encodeURIComponent('Aisle section removed.')+'#layout')});
 router.post('/layout/save',roles('owner','manager'),async(req,res)=>{
   const parsed=z.object({aisles:z.array(z.object({id:z.string(),x:z.coerce.number().int().min(0),y:z.coerce.number().int().min(0),width:z.coerce.number().int().min(60),height:z.coerce.number().int().min(60)})).max(300)}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({error:'Invalid floor-plan data'});
@@ -77,6 +81,7 @@ router.post('/layout/save',roles('owner','manager'),async(req,res)=>{
   res.json({ok:true,savedAt:new Date().toISOString()});
 });
 router.post('/entrances',roles('owner','manager'),async(req,res)=>{const b=z.object({name:z.string().min(2),x:z.coerce.number().min(0),y:z.coerce.number().min(0)}).parse(req.body);await db.run('INSERT INTO entrances(id,supermarket_id,name,x,y) VALUES(?,?,?,?,?)',[id(),req.user.supermarket_id,b.name,b.x,b.y]);res.redirect('/workspace#layout')});
+router.post('/entrances/:id/delete',roles('owner','manager'),async(req,res)=>{await db.run('DELETE FROM entrances WHERE id=? AND supermarket_id=?',[req.params.id,req.user.supermarket_id]);res.redirect('/workspace?notice='+encodeURIComponent('Entrance removed.')+'#layout')});
 
 router.post('/team/invite',roles('owner','manager'),async(req,res)=>{const allowed=req.user.role==='owner'?['manager','staff']:['staff'],role=String(req.body.role);if(!allowed.includes(role))return res.status(403).render('error',{title:'Access denied',message:'You cannot invite that role.'});const email=String(req.body.email||'').trim().toLowerCase();if(await db.get('SELECT id FROM users WHERE email=?',[email]))return res.redirect('/workspace?error='+encodeURIComponent('That email is already registered.')+'#team');const raw=randomToken(),inviteId=id();await db.run('INSERT INTO invitations(id,supermarket_id,invited_by,email,role,token_hash,expires_at) VALUES(?,?,?,?,?,?,?)',[inviteId,req.user.supermarket_id,req.user.id,email,role,tokenHash(raw),new Date(Date.now()+48*3600000).toISOString()]);try{await send({to:email,subject:'Join your supermarket on Semausu',text:`You were invited as ${role}. Accept within 48 hours: ${config.appUrl}/join/${raw}`});return res.redirect('/workspace?notice='+encodeURIComponent(`Invitation sent to ${email}.`)+'#team')}catch(error){console.error('Team invitation failed:',error.message);await db.run('DELETE FROM invitations WHERE id=?',[inviteId]);return res.redirect('/workspace?error='+encodeURIComponent('The invitation email could not be sent. Nothing was saved; please try again.')+'#team')}});
 router.post('/team/:id/status',roles('owner','manager'),async(req,res)=>{const target=await db.get('SELECT * FROM users WHERE id=? AND supermarket_id=?',[req.params.id,req.user.supermarket_id]);if(!target||target.role==='owner'||(req.user.role==='manager'&&target.role==='manager'))return res.status(403).render('error',{title:'Access denied',message:'You cannot change this account.'});await db.run('UPDATE users SET status=? WHERE id=?',[req.body.status==='active'?'active':'suspended',target.id]);res.redirect('/workspace#team')});

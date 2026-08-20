@@ -16,6 +16,12 @@
   await form('/workspace/products',cookie,{_csrf:csrf3,name:'Full Cream Milk 2L',category:'Dairy',sku:'MILK2',barcode:'',price:'34.99',stock:'20',aisleId,sectionId,aisleSide:'front',bay:'2',shelf:'Eye level'});
   response=await fetch(base+`/supermarkets/${slug}`,{headers:{cookie}});html=await response.text();if(response.status!==200||!html.includes('Full Cream Milk 2L')||!html.includes('Paste your shopping list'))throw new Error('Customer matcher did not render');
   const customerCsrf=html.match(/data-csrf="([^"]+)"/)[1],entranceId=html.match(/<option value="([^"]+)">Main entrance<\/option>/)[1],productId=JSON.parse(html.match(/<script type="application\/json" id="productData">([\s\S]*?)<\/script>/)[1])[0].id;
-  response=await fetch(base+`/api/supermarkets/${slug}/route`,{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({_csrf:customerCsrf,entranceId,productIds:[productId]})});if(response.status!==200)throw new Error(`Customer route failed: ${response.status}`);
-  console.log('Floor editor, aisle subsection, product placement and customer route passed');
+  response=await fetch(base+`/api/supermarkets/${slug}/search-events`,{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({_csrf:customerCsrf,sessionId:'test-shopper',searches:[{query:'milk',matchCount:1},{query:'dragon fruit',matchCount:0}]})});if(response.status!==200)throw new Error(`Search analytics failed: ${response.status}`);
+  response=await fetch(base+`/api/supermarkets/${slug}/route`,{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({_csrf:customerCsrf,sessionId:'test-shopper',entranceId,productIds:[productId]})});if(response.status!==200)throw new Error(`Customer route failed: ${response.status}`);
+  response=await fetch(base+'/workspace#analytics',{headers:{cookie}});html=await response.text();if(!html.includes('dragon fruit')||!html.includes('Shopper insights'))throw new Error('Demand analytics did not render');
+  await form(`/workspace/sections/${sectionId}/delete`,cookie,{_csrf:csrf3});
+  await form(`/workspace/entrances/${entranceId}/delete`,cookie,{_csrf:csrf3});
+  await form(`/workspace/aisles/${aisleId}/delete`,cookie,{_csrf:csrf3});
+  response=await fetch(base+'/workspace#layout',{headers:{cookie}});html=await response.text();if(html.includes(`data-aisle-id="${aisleId}"`)||html.includes('Main entrance</b>'))throw new Error('Floor deletion controls failed');
+  console.log('Floor editor, sections, deletion, demand analytics and customer route passed');
 })().catch(error=>{console.error(error);process.exit(1)});

@@ -12,5 +12,8 @@ CREATE TABLE IF NOT EXISTS audit_logs(id TEXT PRIMARY KEY,supermarket_id TEXT RE
 CREATE TABLE IF NOT EXISTS support_tickets(id TEXT PRIMARY KEY,supermarket_id TEXT REFERENCES supermarkets(id),user_id TEXT REFERENCES users(id),subject TEXT NOT NULL,description TEXT NOT NULL,priority TEXT NOT NULL DEFAULT 'normal',status TEXT NOT NULL DEFAULT 'open',created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE INDEX IF NOT EXISTS product_search ON products(supermarket_id,LOWER(name));
 CREATE INDEX IF NOT EXISTS audit_by_store ON audit_logs(supermarket_id,created_at);
+CREATE TABLE IF NOT EXISTS shopping_events(id TEXT PRIMARY KEY,supermarket_id TEXT NOT NULL REFERENCES supermarkets(id) ON DELETE CASCADE,session_id TEXT NOT NULL,event_type TEXT NOT NULL CHECK(event_type IN('search','route')),query TEXT NOT NULL DEFAULT '',product_id TEXT REFERENCES products(id) ON DELETE SET NULL,match_count INTEGER NOT NULL DEFAULT 0,item_count INTEGER NOT NULL DEFAULT 0,metadata JSONB NOT NULL DEFAULT '{}',created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS shopping_events_store_time ON shopping_events(supermarket_id,created_at);
+CREATE INDEX IF NOT EXISTS shopping_events_type ON shopping_events(supermarket_id,event_type,created_at);
 CREATE TABLE IF NOT EXISTS session(sid VARCHAR NOT NULL,sess JSON NOT NULL,expire TIMESTAMP(6) NOT NULL,CONSTRAINT session_pkey PRIMARY KEY(sid));
 CREATE INDEX IF NOT EXISTS session_expire_idx ON session(expire);

@@ -4,7 +4,7 @@
   <script type="application/json" id="productData"><%- JSON.stringify(map.products).replace(/</g,'\\u003c') %></script>
   <div class="customer-layout">
     <aside class="shopping-builder">
-      <section class="builder-step"><span class="step-number">1</span><div><h2>Paste your shopping list</h2><p>Use one item per line. We will show matching products for every item.</p></div></section>
+      <section class="builder-step"><span class="step-number">1</span><div><h2>Paste your shopping list</h2><p>Use one item per line. You choose the exact brand or size before we build a route.</p></div></section>
       <textarea id="shoppingList" rows="7" placeholder="Milk&#10;Eggs&#10;Bread"></textarea>
       <button class="button full-button" id="matchList">Find matching products</button>
       <div id="matchResults" class="match-results" aria-live="polite"></div>
