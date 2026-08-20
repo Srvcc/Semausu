@@ -13,7 +13,7 @@ const app=express();
 if(config.production&&!config.sessionSecret)throw new Error('SESSION_SECRET is required in production');
 if(config.production&&(!process.env.STAFF_PORTAL_PATH||!process.env.PLATFORM_PORTAL_PATH))throw new Error('Private portal paths are required in production');
 app.set('trust proxy',1);app.disable('x-powered-by');app.set('view engine','ejs');app.set('views',path.join(__dirname,'views'));
-app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],styleSrc:["'self'"],scriptSrc:["'self'"],imgSrc:["'self'",'data:']}}}));app.use(express.urlencoded({extended:false,limit:'2mb'}));app.use(express.json({limit:'2mb'}));
+app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],styleSrc:["'self'"],scriptSrc:["'self'"],imgSrc:["'self'",'data:']}}}));app.use(express.urlencoded({extended:false,limit:'2mb'}));app.use(express.json({limit:'8mb'}));
 const sessionOptions={name:'semausu.sid',secret:config.sessionSecret,resave:false,saveUninitialized:false,rolling:true,cookie:{httpOnly:true,sameSite:'strict',secure:config.production,maxAge:8*60*60*1000}};
 if(process.env.DATABASE_URL!=='memory://')sessionOptions.store=new PgStore({pool:db.pool,tableName:'session',createTableIfMissing:false});
 app.use(session(sessionOptions));

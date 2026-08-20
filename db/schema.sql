@@ -15,5 +15,7 @@ CREATE INDEX IF NOT EXISTS audit_by_store ON audit_logs(supermarket_id,created_a
 CREATE TABLE IF NOT EXISTS shopping_events(id TEXT PRIMARY KEY,supermarket_id TEXT NOT NULL REFERENCES supermarkets(id) ON DELETE CASCADE,session_id TEXT NOT NULL,event_type TEXT NOT NULL CHECK(event_type IN('search','route')),query TEXT NOT NULL DEFAULT '',product_id TEXT REFERENCES products(id) ON DELETE SET NULL,match_count INTEGER NOT NULL DEFAULT 0,item_count INTEGER NOT NULL DEFAULT 0,metadata JSONB NOT NULL DEFAULT '{}',created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE INDEX IF NOT EXISTS shopping_events_store_time ON shopping_events(supermarket_id,created_at);
 CREATE INDEX IF NOT EXISTS shopping_events_type ON shopping_events(supermarket_id,event_type,created_at);
+CREATE TABLE IF NOT EXISTS shopping_feedback(id TEXT PRIMARY KEY,supermarket_id TEXT NOT NULL REFERENCES supermarkets(id) ON DELETE CASCADE,session_id TEXT NOT NULL,event_type TEXT NOT NULL CHECK(event_type IN('found','not_found','skipped','route_complete')),product_id TEXT REFERENCES products(id) ON DELETE SET NULL,product_name TEXT NOT NULL DEFAULT '',created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS shopping_feedback_store_time ON shopping_feedback(supermarket_id,created_at);
 CREATE TABLE IF NOT EXISTS session(sid VARCHAR NOT NULL,sess JSON NOT NULL,expire TIMESTAMP(6) NOT NULL,CONSTRAINT session_pkey PRIMARY KEY(sid));
 CREATE INDEX IF NOT EXISTS session_expire_idx ON session(expire);
