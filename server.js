@@ -17,7 +17,7 @@ app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],styleSr
 const sessionOptions={name:'semausu.sid',secret:config.sessionSecret,resave:false,saveUninitialized:false,rolling:true,cookie:{httpOnly:true,sameSite:'strict',secure:config.production,maxAge:8*60*60*1000}};
 if(process.env.DATABASE_URL!=='memory://')sessionOptions.store=new PgStore({pool:db.pool,tableName:'session',createTableIfMissing:false});
 app.use(session(sessionOptions));
-app.use(loadUser);app.use(csrf);app.use(express.static(path.join(__dirname,'public')));app.locals.staffPortalPath=config.staffPortalPath;app.locals.platformPortalPath=config.platformPortalPath;
+app.use(loadUser);app.use(csrf);app.use((req,res,next)=>{res.locals.currentPath=req.path;next()});app.use(express.static(path.join(__dirname,'public')));app.locals.staffPortalPath=config.staffPortalPath;app.locals.platformPortalPath=config.platformPortalPath;
 app.get('/health',(_req,res)=>res.json({status:'ok'}));
 app.use('/',require('./routes/authRoutes'));app.use('/',require('./routes/customerRoutes'));app.use('/workspace',require('./routes/workspaceRoutes'));app.use('/platform',require('./routes/platformRoutes'));
 app.use((_req,res)=>res.status(404).render('error',{title:'Not found',message:'That page does not exist.'}));app.use((error,req,res,_next)=>{console.error(error);res.status(500).render('error',{title:'Something went wrong',message:config.production?'Please try again.':error.message})});

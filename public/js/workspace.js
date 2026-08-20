@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const tabs=[...root.querySelectorAll('[data-workspace-tab]')],views=[...root.querySelectorAll('[data-workspace-view]')];
   const show=name=>{const valid=views.some(view=>view.dataset.workspaceView===name)?name:'overview';tabs.forEach(tab=>tab.classList.toggle('is-active',tab.dataset.workspaceTab===valid));views.forEach(view=>view.hidden=view.dataset.workspaceView!==valid);history.replaceState(null,'',`#${valid}`)};
   tabs.forEach(tab=>tab.addEventListener('click',()=>show(tab.dataset.workspaceTab)));
+  window.addEventListener('hashchange',()=>show(location.hash.slice(1)||'overview'));
   show(location.hash.slice(1)||'overview');
 
   const aisleSelect=root.querySelector('[data-product-aisle]'),sideSelect=root.querySelector('[data-product-side]'),sectionSelect=root.querySelector('[data-product-section]');

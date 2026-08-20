@@ -13,12 +13,27 @@
   <link rel="stylesheet" href="/css/analytics.css">
   <link rel="stylesheet" href="/css/cleanup.css">
   <link rel="stylesheet" href="/css/catalogue.css">
+  <link rel="stylesheet" href="/css/navigation-shell.css">
   <link rel="stylesheet" href="/css/customer.css">
 </head>
 <body>
-<header>
-  <a class="brand" href="/"><b>S</b><span>SEMAUSU<small>SUPERMARKET NAVIGATION</small></span></a>
-  <nav><% if(typeof user!=='undefined'&&user){ %><span><%= user.name %> · <%= user.role.replace('_',' ') %></span><form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-button">Sign out</button></form><% } %></nav>
+<header class="site-header" data-site-header>
+  <div class="header-leading"><button class="back-button" type="button" data-go-back aria-label="Go back">← <span>Back</span></button><a class="brand" href="/"><b>S</b><span>SEMAUSU<small>SUPERMARKET NAVIGATION</small></span></a></div>
+  <div class="header-actions"><% if(typeof user!=='undefined'&&user){ %><span class="signed-in-user"><%= user.name %><small><%= user.role.replace('_',' ') %></small></span><% } %><button class="menu-button" type="button" data-menu-toggle aria-label="Open quick links" aria-expanded="false"><i></i><i></i><i></i><span>Menu</span></button></div>
+  <div class="menu-scrim" data-menu-scrim hidden></div>
+  <aside class="quick-drawer" data-quick-drawer aria-label="Quick links" aria-hidden="true">
+    <div class="drawer-heading"><div><p>QUICK LINKS</p><h2><% if(typeof user!=='undefined'&&user?.role?.startsWith('platform_')){ %>Platform control<% }else if(typeof user!=='undefined'&&user){ %>Supermarket workspace<% }else{ %>Customer navigation<% } %></h2></div><button type="button" data-menu-close aria-label="Close quick links">×</button></div>
+    <nav class="drawer-links">
+      <% if(typeof user!=='undefined'&&user?.role?.startsWith('platform_')){ %>
+        <a href="/platform"><span>01</span><b>Platform overview</b><small>Network activity and performance</small></a><a href="/platform#analytics"><span>02</span><b>Analytics</b><small>Searches, routes and demand</small></a><a href="/platform#supermarkets"><span>03</span><b>Supermarkets</b><small>Manage participating stores</small></a><a href="/platform#support"><span>04</span><b>Support tickets</b><small>Respond to supermarket teams</small></a>
+      <% }else if(typeof user!=='undefined'&&user){ %>
+        <a href="/workspace#overview"><span>01</span><b>Overview</b><small>Store setup and health</small></a><a href="/workspace#analytics"><span>02</span><b>Shopper insights</b><small>Demand and customer results</small></a><a href="/workspace#layout"><span>03</span><b>Floor plan</b><small>Aisles, sections and entrances</small></a><a href="/workspace#products"><span>04</span><b>Products</b><small>Catalogue import and locations</small></a><% if(user.role!=='staff'){ %><a href="/workspace#team"><span>05</span><b>Team</b><small>Managers and staff access</small></a><% } %><a href="/workspace#support"><span>06</span><b>Support</b><small>Contact the Semausu team</small></a>
+      <% }else{ %>
+        <a href="/"><span>01</span><b>Home</b><small>Choose a supermarket</small></a><% if(typeof currentPath!=='undefined'&&currentPath.startsWith('/supermarkets/')){ %><a href="#shoppingList" data-drawer-close><span>02</span><b>Shopping list</b><small>Add or change your items</small></a><a href="#storeMap" data-drawer-close><span>03</span><b>Store map</b><small>Return to the floor route</small></a><% } %><a href="/#stores"><span>04</span><b>All supermarkets</b><small>Open another branch</small></a>
+      <% } %>
+    </nav>
+    <% if(typeof user!=='undefined'&&user){ %><form class="drawer-signout" method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrf %>"><button>Sign out securely</button></form><% }else{ %><p class="drawer-privacy">Customers never need an account.</p><% } %>
+  </aside>
 </header>
 <% if(typeof flashNotice!=='undefined'&&flashNotice){ %><p class="notice feedback"><%= flashNotice %></p><% } %>
 <% if(typeof flashError!=='undefined'&&flashError){ %><p class="form-error feedback"><%= flashError %></p><% } %>
