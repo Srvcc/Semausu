@@ -10,6 +10,7 @@ test('routes around a supermarket fixture instead of crossing it',()=>{
   const obstacle={x:80,y:40,width:80,height:120};
   const path=findPath({x:20,y:100},{x:220,y:100},[obstacle],260,240,20);
   assert.ok(path.length>2,'expected the route to contain turns');
+  assert.ok(path.length<=4,'expected unnecessary grid corners to be smoothed away');
   for(let i=1;i<path.length;i++){
     const a=path[i-1],b=path[i];
     for(let step=0;step<=20;step++){

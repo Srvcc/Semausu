@@ -13,6 +13,22 @@ function simplify(points){
   return result;
 }
 
+function clearSegment(a,b,obstacles,gap=9){
+  const steps=Math.max(1,Math.ceil(distance(a,b)/5));
+  for(let step=0;step<=steps;step++){
+    const ratio=step/steps,x=a.x+(b.x-a.x)*ratio,y=a.y+(b.y-a.y)*ratio;
+    if(obstacles.some(item=>x>=Number(item.x)-gap&&x<=Number(item.x)+Number(item.width)+gap&&y>=Number(item.y)-gap&&y<=Number(item.y)+Number(item.height)+gap))return false;
+  }
+  return true;
+}
+
+function smooth(points,obstacles){
+  if(points.length<3)return points;
+  const result=[points[0]];let index=0;
+  while(index<points.length-1){let next=points.length-1;while(next>index+1&&!clearSegment(points[index],points[next],obstacles))next--;result.push(points[next]);index=next}
+  return simplify(result);
+}
+
 function findPath(start,end,obstacles,width,height,cell=20){
   const cols=Math.ceil(Number(width)/cell),rows=Math.ceil(Number(height)/cell);
   const toGrid=point=>({x:Math.max(0,Math.min(cols-1,Math.round(Number(point.x)/cell))),y:Math.max(0,Math.min(rows-1,Math.round(Number(point.y)/cell)))});
@@ -24,9 +40,9 @@ function findPath(start,end,obstacles,width,height,cell=20){
   if(!source||!target)return[];
   const open=[source],came=new Map(),g=new Map([[key(source.x,source.y),0]]),seen=new Set();
   const directions=[[1,0],[-1,0],[0,1],[0,-1]];
-  while(open.length){open.sort((a,b)=>(g.get(key(a.x,a.y))+distance(a,target))-(g.get(key(b.x,b.y))+distance(b,target)));const current=open.shift(),currentKey=key(current.x,current.y);if(seen.has(currentKey))continue;seen.add(currentKey);if(current.x===target.x&&current.y===target.y){const path=[target];let cursor=currentKey;while(came.has(cursor)){const previous=came.get(cursor);path.push(previous);cursor=key(previous.x,previous.y)}const gridPath=path.reverse().map(fromGrid),safeStart=sourceWasBlocked?gridPath[0]:{x:Number(start.x),y:Number(start.y)},safeEnd=targetWasBlocked?gridPath.at(-1):{x:Number(end.x),y:Number(end.y)};return simplify([safeStart,...gridPath,safeEnd])}for(const [dx,dy] of directions){const next={x:current.x+dx,y:current.y+dy},nextKey=key(next.x,next.y);if(next.x<0||next.y<0||next.x>=cols||next.y>=rows||blocked.has(nextKey))continue;const tentative=g.get(currentKey)+1;if(tentative<(g.get(nextKey)??Infinity)){came.set(nextKey,current);g.set(nextKey,tentative);open.push(next)}}}
+  while(open.length){open.sort((a,b)=>(g.get(key(a.x,a.y))+distance(a,target))-(g.get(key(b.x,b.y))+distance(b,target)));const current=open.shift(),currentKey=key(current.x,current.y);if(seen.has(currentKey))continue;seen.add(currentKey);if(current.x===target.x&&current.y===target.y){const path=[target];let cursor=currentKey;while(came.has(cursor)){const previous=came.get(cursor);path.push(previous);cursor=key(previous.x,previous.y)}const gridPath=path.reverse().map(fromGrid),safeStart=sourceWasBlocked?gridPath[0]:{x:Number(start.x),y:Number(start.y)},safeEnd=targetWasBlocked?gridPath.at(-1):{x:Number(end.x),y:Number(end.y)};return smooth([safeStart,...gridPath,safeEnd],obstacles)}for(const [dx,dy] of directions){const next={x:current.x+dx,y:current.y+dy},nextKey=key(next.x,next.y);if(next.x<0||next.y<0||next.x>=cols||next.y>=rows||blocked.has(nextKey))continue;const tentative=g.get(currentKey)+1;if(tentative<(g.get(nextKey)??Infinity)){came.set(nextKey,current);g.set(nextKey,tentative);open.push(next)}}}
   return[];
 }
 
 function buildRoutePath(start,stops,obstacles,width,height){let current=start,path=[{x:Number(start.x),y:Number(start.y)}];for(const stop of stops){const segment=findPath(current,stop,obstacles,width,height);if(!segment.length)return[];path.push(...segment.slice(1));current=stop}return simplify(path)}
-module.exports={findPath,buildRoutePath};
+module.exports={findPath,buildRoutePath,clearSegment,smooth};
