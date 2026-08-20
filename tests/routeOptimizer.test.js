@@ -18,3 +18,8 @@ test('routes around a supermarket fixture instead of crossing it',()=>{
     }
   }
 });
+test('moves an accidentally blocked destination to the nearest walkable path',()=>{
+  const obstacle={x:80,y:40,width:80,height:120},path=findPath({x:20,y:20},{x:100,y:100},[obstacle],260,240,20);
+  assert.ok(path.length>1);
+  assert.ok(path.every(point=>!(point.x>=obstacle.x&&point.x<=obstacle.x+obstacle.width&&point.y>=obstacle.y&&point.y<=obstacle.y+obstacle.height)));
+});
