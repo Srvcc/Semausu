@@ -8,6 +8,7 @@
       <textarea id="shoppingList" rows="7" placeholder="Milk&#10;Eggs&#10;Bread"></textarea>
       <button class="button full-button" id="matchList">Find matching products</button>
       <div id="matchResults" class="match-results" aria-live="polite"></div>
+      <section class="selection-success" id="selectionSuccess" hidden><span>✓</span><div><h3>Products added successfully</h3><p>Your choices are ready. Add any missing items above, or build the shortest route now.</p></div></section>
       <section class="route-controls" id="routeControls" hidden><label>Start at<select id="entrance"><% map.entrances.forEach(entry=>{ %><option value="<%= entry.id %>"><%= entry.name %></option><% }) %></select></label><button class="button full-button" id="buildRoute">Build my route</button></section>
       <section class="journey-progress" id="journeyProgress" hidden><div class="progress-copy"><b id="progressLabel">Ready to shop</b><span id="progressCount">0 of 0</span></div><div class="progress-track"><i id="progressBar"></i></div><p>At each stop, tell us whether you found the product. This helps the store correct stock and shelf locations.</p></section>
       <ol id="routeStops" class="route-stops"></ol>
