@@ -6,6 +6,7 @@ const {requireUser,roles}=require('../middleware/auth');
 const {id,randomToken,tokenHash}=require('../utils/security');
 const {send}=require('../utils/email');
 const {summarize}=require('../utils/analytics');
+const {findPath}=require('../utils/pathfinder');
 const router=express.Router();
 router.use(requireUser);
 router.use(roles('owner','manager','staff'));
@@ -77,6 +78,11 @@ router.post('/sections/:id/delete',roles('owner','manager'),async(req,res)=>{awa
 router.post('/layout/save',roles('owner','manager'),async(req,res)=>{
   const parsed=z.object({aisles:z.array(z.object({id:z.string(),x:z.coerce.number().int().min(0),y:z.coerce.number().int().min(0),width:z.coerce.number().int().min(60),height:z.coerce.number().int().min(60)})).max(300),entrances:z.array(z.object({id:z.string(),x:z.coerce.number().int().min(0),y:z.coerce.number().int().min(0)})).max(50).default([])}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({error:'Invalid floor-plan data'});
+  const store=await db.get('SELECT map_width,map_height FROM supermarkets WHERE id=?',[req.user.supermarket_id]),issues=[];
+  for(const item of parsed.data.aisles)if(item.x+item.width>number(store.map_width)||item.y+item.height>number(store.map_height))issues.push(`${item.id}: extends beyond the store boundary`);
+  for(let i=0;i<parsed.data.aisles.length;i++)for(let j=i+1;j<parsed.data.aisles.length;j++){const a=parsed.data.aisles[i],b=parsed.data.aisles[j],overlap=a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;if(overlap)issues.push('Two floor objects overlap')}
+  const proposedEntrances=parsed.data.entrances;if(proposedEntrances.length>1)for(const entry of proposedEntrances.slice(1))if(!findPath(proposedEntrances[0],entry,parsed.data.aisles,store.map_width,store.map_height).length)issues.push(`${entry.id}: cannot be reached from the main entrance`);
+  if(issues.length)return res.status(409).json({error:'The floor plan needs attention before saving.',issues:[...new Set(issues)].slice(0,12)});
   for(const item of parsed.data.aisles){
     const previous=await db.get('SELECT * FROM aisles WHERE id=? AND supermarket_id=?',[item.id,req.user.supermarket_id]);
     if(!previous)continue;
@@ -89,6 +95,7 @@ router.post('/layout/save',roles('owner','manager'),async(req,res)=>{
 });
 router.post('/entrances',roles('owner','manager'),async(req,res)=>{const b=z.object({name:z.string().min(2),x:z.coerce.number().min(0),y:z.coerce.number().min(0)}).parse(req.body);await db.run('INSERT INTO entrances(id,supermarket_id,name,x,y) VALUES(?,?,?,?,?)',[id(),req.user.supermarket_id,b.name,b.x,b.y]);res.redirect('/workspace#layout')});
 router.post('/layout/entrances/save',roles('owner','manager'),async(req,res)=>{const parsed=z.object({entrances:z.array(z.object({id:z.string(),x:z.coerce.number().int().min(0),y:z.coerce.number().int().min(0)})).max(50)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({error:'Invalid entrance data'});for(const entry of parsed.data.entrances)await db.run('UPDATE entrances SET x=?,y=? WHERE id=? AND supermarket_id=?',[entry.x,entry.y,entry.id,req.user.supermarket_id]);res.json({ok:true})});
+router.post('/layout/expand',roles('owner','manager'),async(req,res)=>{const axis=req.body.axis==='height'?'map_height':'map_width',store=await db.get(`SELECT ${axis} value FROM supermarkets WHERE id=?`,[req.user.supermarket_id]),next=Math.min(5000,number(store.value)+200);await db.run(`UPDATE supermarkets SET ${axis}=? WHERE id=?`,[next,req.user.supermarket_id]);res.json({ok:true,value:next})});
 router.post('/entrances/:id/delete',roles('owner','manager'),async(req,res)=>{await db.run('DELETE FROM entrances WHERE id=? AND supermarket_id=?',[req.params.id,req.user.supermarket_id]);res.redirect('/workspace?notice='+encodeURIComponent('Entrance removed.')+'#layout')});
 
 router.post('/team/invite',roles('owner','manager'),async(req,res)=>{const allowed=req.user.role==='owner'?['manager','staff']:['staff'],role=String(req.body.role);if(!allowed.includes(role))return res.status(403).render('error',{title:'Access denied',message:'You cannot invite that role.'});const email=String(req.body.email||'').trim().toLowerCase();if(await db.get('SELECT id FROM users WHERE email=?',[email]))return res.redirect('/workspace?error='+encodeURIComponent('That email is already registered.')+'#team');const raw=randomToken(),inviteId=id();await db.run('INSERT INTO invitations(id,supermarket_id,invited_by,email,role,token_hash,expires_at) VALUES(?,?,?,?,?,?,?)',[inviteId,req.user.supermarket_id,req.user.id,email,role,tokenHash(raw),new Date(Date.now()+48*3600000).toISOString()]);try{await send({to:email,subject:'Join your supermarket on Semausu',text:`You were invited as ${role}. Accept within 48 hours: ${config.appUrl}/join/${raw}`});return res.redirect('/workspace?notice='+encodeURIComponent(`Invitation sent to ${email}.`)+'#team')}catch(error){console.error('Team invitation failed:',error.message);await db.run('DELETE FROM invitations WHERE id=?',[inviteId]);return res.redirect('/workspace?error='+encodeURIComponent('The invitation email could not be sent. Nothing was saved; please try again.')+'#team')}});

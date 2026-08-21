@@ -1,0 +1,23 @@
+.setup-guide{margin-top:22px;padding:22px;border:1px solid var(--line);border-radius:15px;background:var(--paper)}
+.setup-guide-head{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.setup-guide-head h3{margin:3px 0}
+.setup-meter{width:min(320px,40vw);height:9px;border-radius:20px;background:#e5dbcf;overflow:hidden}
+.setup-meter i{display:block;height:100%;background:#237a57}
+.setup-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:18px}
+.setup-step{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none;background:#fffaf4}
+.setup-step>span{grid-row:span 2;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#ded3c7;font-weight:900}
+.setup-step b,.setup-step small{display:block}
+.setup-step small{font-size:10px;color:#766a61}
+.setup-step.is-done{border-color:#9bcbb4;background:#eff8f2}
+.setup-step.is-done>span{background:#237a57;color:#fff}
+.layout-report{margin:-10px 0 18px;padding:12px 15px;border-radius:10px;font-weight:800}
+.layout-report.is-good{background:#e8f7ef;color:#205f43}
+.layout-report.is-warning{background:#fff0e8;color:#8e2c21}
+.floor-aisle[data-kind="fridge"] .aisle-body{fill:#e7f3ff}
+.floor-aisle[data-kind="freezer"] .aisle-body{fill:#d8edff}
+.floor-aisle[data-kind="wall_shelf"] .aisle-body{fill:#f2e3c9}
+.floor-aisle[data-kind="produce_table"] .aisle-body{fill:#e3f2dc}
+.floor-aisle[data-kind="display"] .aisle-body{fill:#fff1c9}
+.floor-aisle[data-kind="counter"] .aisle-body,.floor-aisle[data-kind="service"] .aisle-body{fill:#eadff1}
+@media(max-width:1100px){.setup-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.setup-guide-head{align-items:flex-start;flex-direction:column}.setup-meter{width:100%}.setup-cards{grid-template-columns:1fr}}

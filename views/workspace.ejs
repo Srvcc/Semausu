@@ -1,5 +1,5 @@
 <%- include('partials/head') %>
-<main class="workspace-v2" data-workspace data-csrf="<%= csrf %>">
+<main class="workspace-v2" data-workspace data-role="<%= user.role %>" data-csrf="<%= csrf %>">
   <div class="workspace-heading"><div><p class="eyebrow">SUPERMARKET WORKSPACE</p><h1><%= store.name %></h1><p><%= store.address %> · <%= store.status %></p></div><a class="button secondary" href="/supermarkets/<%= store.slug %>">Open customer view</a></div>
   <nav class="workspace-nav" aria-label="Workspace sections">
     <button data-workspace-tab="overview">Overview</button><button data-workspace-tab="analytics">Shopper insights</button><button data-workspace-tab="layout">Floor plan</button><button data-workspace-tab="products">Products</button><% if(user.role!=='staff'){ %><button data-workspace-tab="team">Team</button><button data-workspace-tab="settings">Settings</button><% } %><button data-workspace-tab="support">Support</button>
@@ -8,7 +8,8 @@
   <section class="workspace-view" data-workspace-view="overview">
     <div class="section-intro"><div><p class="eyebrow">TODAY</p><h2>Store overview</h2></div><p>Start with the floor plan, then place products on an aisle side and subsection.</p></div>
     <div class="stats"><article><b><%= products.length %></b><span>Products</span></article><article><b><%= aisles.length %></b><span>Aisles & zones</span></article><article><b><%= sections.length %></b><span>Subsections</span></article><article><b><%= products.filter(x=>x.stock<=5).length %></b><span>Low stock</span></article></div>
-    <div class="next-steps"><h3>Recommended setup order</h3><ol><li>Draw and position aisles</li><li>Add named subsections to each side</li><li>Add products and choose their exact side</li><li>Test the customer route</li></ol></div>
+    <% const setupSteps=[{name:'Store boundary',done:Boolean(store.map_width&&store.map_height),href:'#settings',help:'Confirm the real floor dimensions'},{name:'Entrances & finish points',done:entrances.length>0,href:'#layout',help:'Add where shoppers start and finish'},{name:'Fixtures & corridors',done:aisles.length>0,href:'#layout',help:'Draw aisles, fridges and counters'},{name:'Product locations',done:products.some(p=>p.aisle_id),href:'#products',help:'Import and place the catalogue'},{name:'Customer test',done:analytics.summary.routes>0,href:'/supermarkets/'+store.slug,help:'Build one real test route'}],setupDone=setupSteps.filter(step=>step.done).length; %>
+    <section class="setup-guide"><div class="setup-guide-head"><div><p class="eyebrow">GUIDED SETUP</p><h3><%= setupDone %> of <%= setupSteps.length %> ready</h3></div><div class="setup-meter"><i style="width:<%= setupDone/setupSteps.length*100 %>%"></i></div></div><div class="setup-cards"><% setupSteps.forEach((step,index)=>{ %><a class="setup-step <%= step.done?'is-done':'' %>" href="<%= step.href %>"><span><%= step.done?'✓':index+1 %></span><b><%= step.name %></b><small><%= step.help %></small></a><% }) %></div></section>
   </section>
 
   <section class="workspace-view" data-workspace-view="analytics" hidden>
@@ -24,7 +25,8 @@
   </section>
 
   <section class="workspace-view floor-section" data-workspace-view="layout" hidden>
-    <div class="section-intro"><div><p class="eyebrow">VISUAL EDITOR</p><h2>Floor plan</h2><p>Drag aisles and entrances to move them. Pull any red edge or corner to resize, then save.</p></div><div class="floor-actions"><button class="tool-button" type="button" data-zoom-out>−</button><button class="tool-button" type="button" data-zoom-reset>100%</button><button class="tool-button" type="button" data-zoom-in>+</button><button class="button" type="button" data-save-layout>Save floor plan</button></div></div>
+    <script type="application/json" id="fixtureKinds"><%- JSON.stringify(Object.fromEntries(aisles.map(item=>[item.id,item.kind]))).replace(/</g,'\\u003c') %></script>
+    <div class="section-intro"><div><p class="eyebrow">VISUAL EDITOR</p><h2>Floor plan</h2><p>Drag fixtures and entrances. Pull a red edge to resize. Semausu checks overlaps and blocked entrances before saving.</p></div><div class="floor-actions"><button class="tool-button" type="button" data-zoom-out>−</button><button class="tool-button" type="button" data-zoom-reset>100%</button><button class="tool-button" type="button" data-zoom-in>+</button><% if(user.role!=='staff'){ %><button class="button secondary" type="button" data-expand-floor="width">Wider floor</button><button class="button secondary" type="button" data-expand-floor="height">Taller floor</button><% } %><button class="button" type="button" data-save-layout>Save floor plan</button></div></div>
     <div class="floor-editor-grid">
       <div class="floor-stage" data-floor-stage><svg data-floor-canvas viewBox="0 0 <%= store.map_width %> <%= store.map_height %>" aria-label="Editable supermarket floor plan">
         <defs><pattern id="floorGrid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e7ded2" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#floorGrid)"/>

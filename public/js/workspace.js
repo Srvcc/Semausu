@@ -2,11 +2,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   const root=document.querySelector('[data-workspace]');
   if(!root)return;
 
-  const tabs=[...root.querySelectorAll('[data-workspace-tab]')],views=[...root.querySelectorAll('[data-workspace-view]')];
+  const tabs=[...root.querySelectorAll('[data-workspace-tab]')],views=[...root.querySelectorAll('[data-workspace-view]')],defaultTab=root.dataset.role==='staff'?'products':'overview';
   const show=name=>{const valid=views.some(view=>view.dataset.workspaceView===name)?name:'overview';tabs.forEach(tab=>tab.classList.toggle('is-active',tab.dataset.workspaceTab===valid));views.forEach(view=>view.hidden=view.dataset.workspaceView!==valid);history.replaceState(null,'',`#${valid}`)};
   tabs.forEach(tab=>tab.addEventListener('click',()=>show(tab.dataset.workspaceTab)));
-  window.addEventListener('hashchange',()=>show(location.hash.slice(1)||'overview'));
-  show(location.hash.slice(1)||'overview');
+  window.addEventListener('hashchange',()=>show(location.hash.slice(1)||defaultTab));
+  show(location.hash.slice(1)||defaultTab);
 
   const aisleSelect=root.querySelector('[data-product-aisle]'),sideSelect=root.querySelector('[data-product-side]'),sectionSelect=root.querySelector('[data-product-section]');
   const filterSections=()=>{if(!sectionSelect)return;const aisle=aisleSelect.value,side=sideSelect.value;[...sectionSelect.options].forEach((option,index)=>{if(!index)return;option.hidden=option.dataset.aisle!==aisle||option.dataset.side!==side});if(sectionSelect.selectedOptions[0]?.hidden)sectionSelect.value=''};
@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   const svg=root.querySelector('[data-floor-canvas]');
   if(!svg)return;
   const stage=root.querySelector('[data-floor-stage]'),groups=[...svg.querySelectorAll('[data-aisle-id]')],entranceGroups=[...svg.querySelectorAll('[data-entrance-id]')],selectedEmpty=root.querySelector('[data-selected-empty]'),selectedFields=root.querySelector('[data-selected-fields]'),selectedName=root.querySelector('[data-selected-name]'),fields=Object.fromEntries([...root.querySelectorAll('[data-field]')].map(input=>[input.dataset.field,input]));
+  const fixtureKinds=JSON.parse(root.querySelector('#fixtureKinds')?.textContent||'{}');
+  groups.forEach(group=>group.dataset.kind=fixtureKinds[group.dataset.aisleId]||'aisle');
   let selected=null,interaction=null,zoom=1;
   const baseView={width:svg.viewBox.baseVal.width,height:svg.viewBox.baseVal.height};
   const point=event=>{const p=svg.createSVGPoint();p.x=event.clientX;p.y=event.clientY;return p.matrixTransform(svg.getScreenCTM().inverse())};
@@ -51,6 +53,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   root.querySelector('[data-zoom-in]')?.addEventListener('click',()=>setZoom(Math.min(2.5,zoom+.2)));
   root.querySelector('[data-zoom-out]')?.addEventListener('click',()=>setZoom(Math.max(.5,zoom-.2)));
   root.querySelector('[data-zoom-reset]')?.addEventListener('click',()=>setZoom(1));
+  root.querySelectorAll('[data-expand-floor]').forEach(button=>button.addEventListener('click',async()=>{const original=button.textContent;button.disabled=true;button.textContent='Expanding…';try{const response=await fetch('/workspace/layout/expand',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({_csrf:root.dataset.csrf,axis:button.dataset.expandFloor})});if(!response.ok)throw new Error();button.textContent='Expanded ✓';setTimeout(()=>location.reload(),500)}catch{button.textContent=original;button.disabled=false}}));
   function setZoom(value){zoom=value;svg.setAttribute('viewBox',`0 0 ${baseView.width/zoom} ${baseView.height/zoom}`);const reset=root.querySelector('[data-zoom-reset]');if(reset)reset.textContent=`${Math.round(zoom*100)}%`}
-  root.querySelector('[data-save-layout]')?.addEventListener('click',async event=>{const button=event.currentTarget,original=button.textContent;button.disabled=true;button.classList.add('is-loading');button.textContent='Saving…';try{const response=await fetch('/workspace/layout/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({_csrf:root.dataset.csrf,aisles:groups.map(group=>({id:group.dataset.aisleId,...values(group)})),entrances:entranceGroups.map(group=>({id:group.dataset.entranceId,x:Number(group.dataset.x),y:Number(group.dataset.y)}))})});if(!response.ok)throw new Error('Save failed');button.classList.remove('is-loading');button.textContent='Saved ✓';setTimeout(()=>{button.textContent=original;button.disabled=false},1400)}catch(error){button.classList.remove('is-loading');button.textContent='Save failed';button.disabled=false}});
+  root.querySelector('[data-save-layout]')?.addEventListener('click',async event=>{const button=event.currentTarget,original=button.textContent;let report=root.querySelector('[data-layout-report]');if(!report){report=document.createElement('div');report.dataset.layoutReport='';report.className='layout-report';button.closest('.section-intro').after(report)}button.disabled=true;button.classList.add('is-loading');button.textContent='Checking floor…';report.hidden=true;try{const response=await fetch('/workspace/layout/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({_csrf:root.dataset.csrf,aisles:groups.map(group=>({id:group.dataset.aisleId,...values(group)})),entrances:entranceGroups.map(group=>({id:group.dataset.entranceId,x:Number(group.dataset.x),y:Number(group.dataset.y)}))})}),result=await response.json();if(!response.ok)throw new Error([result.error,...(result.issues||[])].join(' '));button.classList.remove('is-loading');button.textContent='Saved ✓';report.className='layout-report is-good';report.textContent='Floor plan saved. Entrances remain connected and no objects overlap.';report.hidden=false;setTimeout(()=>{button.textContent=original;button.disabled=false},1400)}catch(error){button.classList.remove('is-loading');button.textContent='Fix floor plan';button.disabled=false;report.className='layout-report is-warning';report.textContent=error.message;report.hidden=false}});
 });
