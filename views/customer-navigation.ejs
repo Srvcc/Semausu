@@ -1,5 +1,5 @@
 <%- include('partials/head') %>
-<main class="customer-map-page" data-navigation data-slug="<%= supermarket.slug %>" data-csrf="<%= csrf %>">
+<main class="customer-map-page" data-navigation data-slug="<%= supermarket.slug %>" data-map-version="<%= mapVersion %>" data-csrf="<%= csrf %>">
   <div class="customer-heading"><div><p class="eyebrow">SHOPPING ROUTE</p><h1><%= supermarket.name %></h1><p><%= supermarket.address %></p></div><div class="privacy-note">No login required</div></div>
   <div class="customer-layout">
     <aside class="shopping-builder" data-shopping-panel>
@@ -14,7 +14,7 @@
       </section>
       <section class="journey-progress" id="journeyProgress" hidden><div class="progress-copy"><b id="progressLabel">Ready to shop</b><span id="progressCount">0 of 0</span></div><div class="progress-track"><i id="progressBar"></i></div><p id="nextInstruction">Follow the highlighted route to your next stop.</p></section>
       <ol id="routeStops" class="route-stops"></ol>
-      <section class="route-complete" id="routeComplete" hidden><span>✓</span><div><h3>Shopping route complete</h3><p>You reached the finish point and helped improve this store’s locations.</p></div></section>
+      <section class="route-complete" id="routeComplete" hidden><span>✓</span><div><h3>Shopping route complete</h3><p>You reached the finish point and helped improve this store’s locations.</p><button class="button secondary" type="button" data-new-journey>Start a new shopping list</button></div></section>
     </aside>
     <section class="customer-floor">
       <div class="map-toolbar"><button type="button" data-customer-zoom-out aria-label="Zoom out">−</button><button type="button" data-customer-zoom-reset>Fit</button><button type="button" data-customer-zoom-in aria-label="Zoom in">+</button><button type="button" data-focus-next>Next</button><button type="button" data-set-position>Set my position</button></div>

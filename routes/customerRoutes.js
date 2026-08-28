@@ -1,4 +1,5 @@
 const express=require('express');
+const crypto=require('crypto');
 const db=require('../config/db');
 const {optimize}=require('../utils/routeOptimizer');
 const {findPath}=require('../utils/pathfinder');
@@ -44,7 +45,7 @@ function groupStops(products){
 }
 
 router.get('/',async(_req,res)=>res.render('index',{title:'Semausu',supermarkets:await db.all("SELECT id,name,slug,address FROM supermarkets WHERE status='active' ORDER BY name")}));
-router.get('/supermarkets/:slug',async(req,res)=>{const supermarket=await db.get("SELECT * FROM supermarkets WHERE slug=? AND status='active'",[req.params.slug]);if(!supermarket)return res.status(404).render('error',{title:'Supermarket not found',message:'This supermarket is unavailable.'});res.render('customer-navigation',{title:supermarket.name,supermarket,map:await storeMap(supermarket.id,{includeProducts:false})});});
+router.get('/supermarkets/:slug',async(req,res)=>{const supermarket=await db.get("SELECT * FROM supermarkets WHERE slug=? AND status='active'",[req.params.slug]);if(!supermarket)return res.status(404).render('error',{title:'Supermarket not found',message:'This supermarket is unavailable.'});const map=await storeMap(supermarket.id,{includeProducts:false}),mapVersion=crypto.createHash('sha256').update(JSON.stringify({size:[supermarket.map_width,supermarket.map_height],aisles:map.aisles.map(({id,x,y,width,height})=>[id,x,y,width,height]),entrances:map.entrances.map(({id,x,y})=>[id,x,y]),checkouts:map.checkouts.map(({id,x,y,width,height,status})=>[id,x,y,width,height,status]),corridors:map.corridorEdges.map(({id,from_node_id,to_node_id,status})=>[id,from_node_id,to_node_id,status])})).digest('hex').slice(0,16);res.render('customer-navigation',{title:supermarket.name,supermarket,map,mapVersion});});
 
 router.post('/api/supermarkets/:slug/search',async(req,res)=>{
   const supermarket=await db.get("SELECT id FROM supermarkets WHERE slug=? AND status='active'",[req.params.slug]);if(!supermarket)return res.status(404).json({error:'Supermarket not found'});
@@ -58,10 +59,10 @@ router.post('/api/supermarkets/:slug/feedback',async(req,res)=>{const supermarke
 
 router.post('/api/supermarkets/:slug/route',async(req,res)=>{
   const supermarket=await db.get("SELECT * FROM supermarkets WHERE slug=? AND status='active'",[req.params.slug]);if(!supermarket)return res.status(404).json({error:'Supermarket not found'});
-  const map=await storeMap(supermarket.id),ids=Array.isArray(req.body.productIds)?req.body.productIds.map(String):[],requestedStart=req.body.currentPoint&&Number.isFinite(Number(req.body.currentPoint.x))?{id:'current',name:'Current position',x:number(req.body.currentPoint.x),y:number(req.body.currentPoint.y)}:null,start=requestedStart||map.entrances.find(x=>x.id===String(req.body.entranceId))||map.entrances[0],checkout=map.checkouts.find(x=>x.id===String(req.body.finishId)),finish=checkout?{...checkout,...checkoutApproach(checkout),isCheckout:true}:map.entrances.find(x=>x.id===String(req.body.finishId))||start;
+  const map=await storeMap(supermarket.id),ids=Array.isArray(req.body.productIds)?req.body.productIds.map(String):[],requestedStart=req.body.currentPoint&&Number.isFinite(Number(req.body.currentPoint.x))?{id:'current',name:'Current position',x:number(req.body.currentPoint.x),y:number(req.body.currentPoint.y)}:null,start=requestedStart||map.entrances.find(x=>x.id===String(req.body.entranceId))||map.entrances[0],checkout=map.checkouts.find(x=>x.id===String(req.body.finishId)),rawFinish=checkout?{...checkout,...checkoutApproach(checkout),isCheckout:true}:map.entrances.find(x=>x.id===String(req.body.finishId))||start,finish={id:rawFinish.id,name:rawFinish.name||'Finish',x:number(rawFinish.x),y:number(rawFinish.y),isFinish:true,isCheckout:Boolean(checkout),products:[]};
   if(!start)return res.status(400).json({error:'This store has not configured an entrance yet'});
-  const selected=map.products.filter(product=>ids.includes(String(product.id)));if(!selected.length)return res.status(400).json({error:'Choose at least one matched product'});
-  const ordered=optimize(start,groupStops(selected)),destinations=[...ordered,{id:'finish',name:`Finish at ${finish.name}`,x:number(finish.x),y:number(finish.y),isFinish:true,products:[]}];
+  const selected=map.products.filter(product=>ids.includes(String(product.id)));if(!selected.length&&!requestedStart)return res.status(400).json({error:'Choose at least one matched product'});
+  const ordered=optimize(start,groupStops(selected)),destinations=[...ordered,finish];
   const segments=[];let current=start;
   for(const destination of destinations){let points=graphPath(current,destination,map.corridorNodes,map.corridorEdges);if(!points.length)points=findPath(current,destination,[...map.aisles,...map.checkouts],supermarket.map_width,supermarket.map_height);if(!points.length)return res.status(422).json({error:'No walkable path connects every stop. The store should regenerate walking paths and check corridor closures.'});segments.push({from:{x:number(current.x),y:number(current.y)},to:{x:number(destination.x),y:number(destination.y)},points});current=destination}
   const sessionId=String(req.body.sessionId||'anonymous').slice(0,80);await db.run("INSERT INTO shopping_events(id,supermarket_id,session_id,event_type,item_count,metadata) VALUES(?,?,?,?,?,?)",[id(),supermarket.id,sessionId,'route',selected.length,JSON.stringify({entrance:start.name,finish:finish.name,productIds:selected.map(x=>x.id)})]);
