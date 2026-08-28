@@ -13,7 +13,7 @@ async function storeMap(storeId,{includeProducts=true}={}){
     db.all('SELECT * FROM aisles WHERE supermarket_id=? ORDER BY sort_order,code',[storeId]),
     db.all('SELECT * FROM aisle_sections WHERE supermarket_id=? ORDER BY aisle_id,side,sort_order,name',[storeId]),
     db.all('SELECT * FROM entrances WHERE supermarket_id=? ORDER BY sort_order',[storeId]),
-    includeProducts?db.all('SELECT p.*,a.code aisle_code,a.name aisle_name,a.x fixture_x,a.y fixture_y,a.width fixture_width,a.height fixture_height,s.name section_name,s.start_percent,s.end_percent FROM products p LEFT JOIN aisles a ON a.id=p.aisle_id LEFT JOIN aisle_sections s ON s.id=p.section_id WHERE p.supermarket_id=? AND p.available=1 AND p.stock>0 ORDER BY p.category,p.name',[storeId]):[],
+    includeProducts?db.all('SELECT p.*,a.code aisle_code,a.name aisle_name,a.x fixture_x,a.y fixture_y,a.width fixture_width,a.height fixture_height,s.name section_name,s.start_percent,s.end_percent FROM products p JOIN aisles a ON a.id=p.aisle_id LEFT JOIN aisle_sections s ON s.id=p.section_id WHERE p.supermarket_id=? AND p.available=1 AND p.stock>0 ORDER BY p.category,p.name',[storeId]):[],
     db.all('SELECT * FROM corridor_nodes WHERE supermarket_id=?',[storeId]),
     db.all('SELECT * FROM corridor_edges WHERE supermarket_id=?',[storeId]),
     db.all("SELECT * FROM checkouts WHERE supermarket_id=? AND status='open' ORDER BY name",[storeId]),
