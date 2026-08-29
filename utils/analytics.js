@@ -10,9 +10,9 @@ function summarize(events=[],feedback=[]){
   const missingCounts=countBy(searches.filter(x=>number(x.match_count)===0),row=>String(row.query).toLowerCase());
   const missingSearches=Object.entries(missingCounts).map(([query,count])=>({query,searches:count})).sort((a,b)=>b.searches-a.searches).slice(0,10);
   const hourCounts=countBy(searches,row=>southAfricanParts(row.created_at).hour);
-  const hourly=Object.entries(hourCounts).map(([hour,count])=>({hour:Number(hour),searches:count})).sort((a,b)=>b.searches-a.searches).slice(0,6);
+  const hourly=Array.from({length:24},(_,hour)=>({hour,searches:number(hourCounts[hour])}));
   const feedbackCounts=countBy(feedback,row=>row.event_type),notFound=countBy(feedback.filter(x=>x.event_type==='not_found'),row=>String(row.product_name||'Unknown').toLowerCase());
   const notFoundProducts=Object.entries(notFound).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count).slice(0,8);
-  return{summary:{searches:searches.length,shoppers:new Set([...events,...feedback].map(x=>x.session_id)).size,routes:routes.length,routedItems:routes.reduce((sum,x)=>sum+number(x.item_count),0),found:number(feedbackCounts.found),notFound:number(feedbackCounts.not_found),completed:number(feedbackCounts.route_complete)},daily:Object.values(dailyMap).sort((a,b)=>a.day.localeCompare(b.day)).slice(-14),topSearches,missingSearches,hourly,notFoundProducts};
+  return{summary:{searches:searches.length,shoppers:new Set([...events,...feedback].map(x=>x.session_id)).size,routes:routes.length,routedItems:routes.reduce((sum,x)=>sum+number(x.item_count),0),found:number(feedbackCounts.found),notFound:number(feedbackCounts.not_found),completed:number(feedbackCounts.route_complete)},daily:Object.values(dailyMap).sort((a,b)=>a.day.localeCompare(b.day)).slice(-30),topSearches,missingSearches,hourly,notFoundProducts};
 }
 module.exports={summarize};

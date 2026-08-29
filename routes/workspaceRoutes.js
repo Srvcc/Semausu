@@ -33,7 +33,8 @@ async function data(storeId){
     db.all('SELECT * FROM approach_points WHERE supermarket_id=? ORDER BY fixture_id,side,bay',[storeId])
   ]);
   const products=rawProducts.map(product=>({...product,price:number(product.price),stock:number(product.stock),x:number(product.x),y:number(product.y)}));
-  return{store,products,aisles,sections,entrances,team,tickets,corridorNodes,corridorEdges,checkouts,locationTasks,approachPoints,analytics:summarize(events,feedback)};
+  const periods={};for(const days of [7,14,30]){const cutoff=Date.now()-days*86400000;periods[days]=summarize(events.filter(item=>new Date(item.created_at).getTime()>=cutoff),feedback.filter(item=>new Date(item.created_at).getTime()>=cutoff))}periods.all=summarize(events,feedback);
+  return{store,products,aisles,sections,entrances,team,tickets,corridorNodes,corridorEdges,checkouts,locationTasks,approachPoints,analytics:periods[14],analyticsPeriods:periods};
 }
 
 function placement(aisle,side,bay,section){
